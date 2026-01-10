@@ -1,1 +1,2 @@
 - Any change to skills must be updated in the local ~/.codex/skills/custom/ directory.
+- Draft the commit message yourself based on git diff and follow the commit message convention.

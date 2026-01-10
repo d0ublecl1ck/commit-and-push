@@ -7,6 +7,10 @@ description: Strict workflow and safety constraints for "commit all files withou
 
 ## Workflow (order is mandatory)
 
+0) **No questions unless exceptional**
+- Do not ask the user any questions
+- Proceed autonomously unless an error or exceptional condition occurs
+
 1) **Pre-commit checks (must run in parallel)**
 - Run in parallel: `git status`, `git diff`, `git log --oneline -5`
 - Summarize results before proceeding
@@ -15,13 +19,15 @@ description: Strict workflow and safety constraints for "commit all files withou
 - If `git log --oneline -5` is empty or reports no commits (e.g., `fatal: your current branch ... does not have any commits yet`), treat this as the first commit
 - For the first commit, do not ask the user for requirements; inspect current changes and project context and create the initial commit
 
-3) **Confirm files to commit**
-- Only add untracked files directly related to the current commit
-- Do not add unrelated files; do not create empty commits
+3) **Commit all files without confirmation**
+- Never ask the user which files to commit
+- Always commit all changes, including untracked files (`git add -A`)
+- Do not create empty commits
 
 4) **Commit**
 - Use HEREDOC for the commit message
 - Commit message must include a concrete summary of changes
+- Draft the commit message yourself based on the diff and follow the commit message convention
 - Never include any signature lines:
   - `Generated with [Claude Code](https://claude.ai/code)`
   - `Co-Authored-By: Claude <noreply@anthropic.com>`

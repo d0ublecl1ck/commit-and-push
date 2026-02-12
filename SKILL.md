@@ -1,9 +1,9 @@
 ---
-name: git-commit-all
-description: Strict workflow and safety constraints for "commit all files without asking for confirmation." Use when the user wants to commit all changes, run parallel pre-checks (git status / git diff / git log --oneline -5), write commit messages via HEREDOC, avoid signing/pushing/config changes, handle untracked files and pre-commit modifications, and optionally create a PR via gh only when explicitly requested.
+name: Commit&Push
+description: Strict workflow and safety constraints for "commit and push all files without asking for confirmation." Use when the user wants to commit all changes, run parallel pre-checks (git status / git diff / git log --oneline -5), write commit messages via HEREDOC, avoid signing/pushing/config changes, handle untracked files and pre-commit modifications, and optionally create a PR via gh only when explicitly requested.
 ---
 
-# Git Commit All
+# Commit&Push
 
 ## Workflow (order is mandatory)
 
@@ -14,6 +14,8 @@ description: Strict workflow and safety constraints for "commit all files withou
 1) **Pre-commit checks (must run in parallel)**
 - Run in parallel: `git status`, `git diff`, `git log --oneline -5`
 - Summarize results before proceeding
+- If `git status --short --branch` shows both `ahead` and `behind` (e.g., `master...origin/master [ahead 1, behind 1]`), `git diff` is empty, `git log --oneline -5` is non-empty (not first commit), and `git status` reports `nothing to commit, working tree clean`, treat this as a sync-only state (missing pull/push), not a commit state
+- In sync-only state, run `git pull --rebase` first, then `git push`; do not create a new commit
 
 2) **First commit special rule**
 - If `git log --oneline -5` is empty or reports no commits (e.g., `fatal: your current branch ... does not have any commits yet`), treat this as the first commit

@@ -1,27 +1,39 @@
-# Git Commit All
+# Commit&Push
 
-A Codex skill that enforces a strict, safe workflow for committing all relevant changes in a repo.
+A reusable agent skill that enforces a strict, safe workflow for committing and pushing all repo changes.
 
 ## What it does
 
-- Runs pre-commit checks in parallel: `git status`, `git diff`, `git log --oneline -5`
-- Adds only relevant untracked files (no unrelated files)
-- Commits with a HEREDOC message (no signatures, no push)
-- Re-commits if pre-commit hooks modify files
+- Runs pre-checks in parallel: `git status`, `git diff`, `git log --oneline -5`
+- Always stages all changes (including untracked files) with `git add -A`
+- Writes commit messages via HEREDOC (no signatures)
+- Re-commits when pre-commit hooks modify files
+- Pushes automatically after a successful commit
+- Handles sync-only states (clean tree but branch ahead/behind) via `git pull --rebase` + `git push`
 
 ## When to use
 
-Use when you want Codex to commit all relevant changes without extra confirmations, following a strict workflow and safety rules.
+Use when you want your agent to commit and push all current changes without extra confirmation, while following strict safety constraints.
+
+## How to trigger
+
+Use natural language such as:
+
+- `commit and push all files without asking`
+- `直接提交并推送当前全部改动`
+
+Mentioning `Commit&Push` explicitly also triggers this skill.
 
 ## Installation
 
-Copy the skill folder into your Codex skills directory (example for macOS/Linux):
+Place this folder under your agent skills directory, for example:
 
 ```bash
-cp -R git-commit-all ~/.codex/skills/custom/
+cp -R commit-and-push <your-agent-skills-dir>/
 ```
 
-## Notes
+## Safety notes
 
-- This skill never modifies git config
-- This skill never pushes unless explicitly requested
+- Never modifies git config
+- Never uses interactive git commands
+- Creates PRs with `gh` only when explicitly requested

@@ -39,6 +39,7 @@ description: Strict workflow and safety constraints for "commit all files withou
 6) **Auto push after successful commit**
 - Automatically push to the tracked remote branch after a successful commit
 - If no upstream is configured, push with `-u origin <current-branch>`
+- If the remote branch is ahead of local, prefer `git pull --rebase` before retrying push
 - If push fails, treat it as an exceptional condition and ask the user for instructions
 
 ## Safety constraints (hard rules)

@@ -11,6 +11,16 @@ description: Strict workflow and safety constraints for "commit and push all fil
 - Do not ask the user any questions
 - Proceed autonomously unless an error or exceptional condition occurs
 
+0.5) **Detect single-repo vs multi-repo workspace**
+- Before any git action, determine whether the current workspace is a single Git repository or a workspace containing multiple independent Git repositories
+- If the current workspace matches this multi-repo layout, do not run one combined root-level git workflow:
+  - `openspec`: `/Users/d0ublecl1ck/evaluation/openspec`
+  - `evaluation_admin`: `/Users/d0ublecl1ck/evaluation/evaluation_admin`
+  - `evaluation_server`: `/Users/d0ublecl1ck/evaluation/evaluation_server`
+- In that multi-repo layout, run the full Commit&Push workflow separately for each repository
+- Treat each repository as an independent unit for pre-checks, staging, commit, hook handling, pull/rebase, push, and failure handling
+- Summarize status and outcome per repository
+
 1) **Pre-commit checks (must run in parallel)**
 - Run in parallel: `git status`, `git diff`, `git log --oneline -5`
 - Summarize results before proceeding

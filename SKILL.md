@@ -1,11 +1,19 @@
 ---
 name: Commit&Push
-description: Strict workflow and safety constraints for committing and pushing all changes without confirmation, while drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested.
+description: Strict workflow and safety constraints for committing and pushing all changes without confirmation, while drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested. This skill is opt-in only and must never be invoked proactively; use it only when the user explicitly asks to use Commit&Push or explicitly requests commit and push execution.
 ---
 
 # Commit&Push
 
 Commit all repo changes, write a proper Conventional Commit message, and push safely.
+
+## Activation Boundary (hard rule)
+
+- This skill is opt-in only
+- Never invoke this skill proactively, implicitly, by default, or because it seems helpful
+- Use this skill only when the user explicitly requests `Commit&Push` or explicitly instructs the agent to commit and push changes
+- If the user asks only for code changes, review, debugging, planning, or implementation, do not use this skill
+- Do not reinterpret vague shipping intent as permission to use this skill; require an explicit user request for commit and push execution
 
 ## Workflow (order is mandatory)
 

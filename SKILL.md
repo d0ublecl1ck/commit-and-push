@@ -1,6 +1,6 @@
 ---
 name: Commit&Push
-description: Strict workflow and safety constraints for committing and pushing all changes without confirmation, while drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested. This skill is opt-in only and must never be invoked proactively; use it only when the user explicitly asks to use Commit&Push or explicitly requests commit and push execution.
+description: Strict workflow and safety constraints for committing all intended repo changes without confirmation, auto-recording ignore rules for local-only junk files, drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested. This skill is opt-in only and must never be invoked proactively; use it only when the user explicitly asks to use Commit&Push or explicitly requests commit and push execution.
 ---
 
 # Commit&Push
@@ -44,6 +44,11 @@ Commit all repo changes, write a proper Conventional Commit message, and push sa
 3) **Commit all files without confirmation**
 - Never ask the user which files to commit
 - Always commit all changes, including untracked files (`git add -A`)
+- Before the final staging pass, inspect untracked files and local junk files that should not be versioned, such as `__pycache__/`, `*.pyc`, `.DS_Store`, editor swap files, temporary logs, coverage output, local virtual environments, or build caches
+- If such local-only files are present and are not already ignored, add the narrowest appropriate ignore pattern to the repository ignore file before staging
+- Prefer updating an existing repo-local ignore file such as `.gitignore`; use `.git/info/exclude` only when the ignore rule is intentionally machine-local and should not be committed
+- After adding the ignore rule, remove those files from the index if needed, keep them untracked locally, and commit the ignore-rule change as part of the same repository commit
+- Do not auto-ignore source files, project assets, fixtures, migrations, lockfiles, or any file whose ownership is ambiguous; when in doubt, stop and ask the user
 - Do not create empty commits
 - Never commit `.env`, credentials, secrets, `node_modules/`, `__pycache__/`, `.venv/`, or large binary files without explicit approval
 
@@ -61,6 +66,7 @@ Commit all repo changes, write a proper Conventional Commit message, and push sa
 5) **Commit**
 - Draft the message yourself from the diff, not from filenames alone
 - Use one focused commit per repository for the current batch of changes
+- If the commit includes newly added ignore rules for local-only junk, mention that cleanup intent in the body when it materially affects what was staged
 - If commit fails due to large files or policy limits, stop and ask the user for instructions before proceeding
 
 6) **Handle pre-commit changes**

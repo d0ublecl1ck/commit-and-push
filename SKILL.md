@@ -1,9 +1,9 @@
 ---
-name: Commit&Push
-description: Strict workflow and safety constraints for committing all intended repo changes without confirmation, auto-recording ignore rules for local-only junk files, drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested. This skill is opt-in only and must never be invoked proactively; use it only when the user explicitly asks to use Commit&Push or explicitly requests commit and push execution.
+name: cap
+description: Strict workflow and safety constraints for committing all intended repo changes without confirmation, auto-recording ignore rules for local-only junk files, drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested. This skill is opt-in only and must never be invoked proactively; use it only when the user explicitly asks to use cap or explicitly requests commit and push execution.
 ---
 
-# Commit&Push
+# cap
 
 Commit all repo changes, write a proper Conventional Commit message, and push safely.
 
@@ -11,7 +11,7 @@ Commit all repo changes, write a proper Conventional Commit message, and push sa
 
 - This skill is opt-in only
 - Never invoke this skill proactively, implicitly, by default, or because it seems helpful
-- Use this skill only when the user explicitly requests `Commit&Push` or explicitly instructs the agent to commit and push changes
+- Use this skill only when the user explicitly requests `cap` or explicitly instructs the agent to commit and push changes
 - If the user asks only for code changes, review, debugging, planning, or implementation, do not use this skill
 - Do not reinterpret vague shipping intent as permission to use this skill; require an explicit user request for commit and push execution
 
@@ -27,7 +27,7 @@ Commit all repo changes, write a proper Conventional Commit message, and push sa
   - `openspec`: `/Users/d0ublecl1ck/evaluation/openspec`
   - `evaluation_admin`: `/Users/d0ublecl1ck/evaluation/evaluation_admin`
   - `evaluation_server`: `/Users/d0ublecl1ck/evaluation/evaluation_server`
-- In that multi-repo layout, run the full Commit&Push workflow separately for each repository
+- In that multi-repo layout, run the full cap workflow separately for each repository
 - Treat each repository as an independent unit for pre-checks, staging, commit, hook handling, pull/rebase, push, and failure handling
 - Summarize status and outcome per repository
 

@@ -41,18 +41,29 @@ Commit all repo changes, write a proper Conventional Commit message, and push sa
 - If `git log --oneline -5` is empty or reports no commits (e.g., `fatal: your current branch ... does not have any commits yet`), treat this as the first commit
 - For the first commit, do not ask the user for requirements; inspect current changes and project context and create the initial commit
 
-3) **Commit all files without confirmation**
-- Never ask the user which files to commit
-- Always commit all changes, including untracked files (`git add -A`)
-- Before the final staging pass, inspect untracked files and local junk files that should not be versioned, such as `__pycache__/`, `*.pyc`, `.DS_Store`, editor swap files, temporary logs, coverage output, local virtual environments, or build caches
+3) **Group changes by conversation round — batch commits, not one giant commit**
+- Before staging, review the conversation history and identify distinct user requests or rounds that produced changes
+- Each distinct conversation round that resulted in file changes is a separate commit unit
+- Map each changed file to the conversation round that caused the change:
+  - If a file was touched by multiple rounds, assign it to the most recent round that modified it
+  - If the mapping is ambiguous and cannot be resolved from the conversation, fall back to grouping by coherent change intent inferred from the diffs themselves
+- Treat each round as an independent commit with its own staging, message, and commit
+- For each round, stage only the files belonging to that round (do not use `git add -A` blindly across all rounds)
+- When a round's changes include newly added ignore rules for local-only junk, commit those ignore rules together with that round's changes
+- If the conversation shows only a single coherent round of changes, a single commit is fine — the point is to avoid smashing unrelated changes together
+
+3.1) **Per-round staging rules**
+- For each round, stage all files that belong to that round, including untracked files created during that round
+- Before each round's staging pass, inspect untracked files and local junk files that should not be versioned, such as `__pycache__/`, `*.pyc`, `.DS_Store`, editor swap files, temporary logs, coverage output, local virtual environments, or build caches
 - If such local-only files are present and are not already ignored, add the narrowest appropriate ignore pattern to the repository ignore file before staging
 - Prefer updating an existing repo-local ignore file such as `.gitignore`; use `.git/info/exclude` only when the ignore rule is intentionally machine-local and should not be committed
-- After adding the ignore rule, remove those files from the index if needed, keep them untracked locally, and commit the ignore-rule change as part of the same repository commit
+- After adding the ignore rule, remove those files from the index if needed, keep them untracked locally, and commit the ignore-rule change as part of the same round's commit
 - Do not auto-ignore source files, project assets, fixtures, migrations, lockfiles, or any file whose ownership is ambiguous; when in doubt, stop and ask the user
 - Do not create empty commits
 - Never commit `.env`, credentials, secrets, `node_modules/`, `__pycache__/`, `.venv/`, or large binary files without explicit approval
 
-4) **Draft the commit message before commit**
+4) **Draft one commit message per round before committing**
+- Draft a separate message for each conversation round identified in step 3
 - Use Conventional Commits format: `type(scope): subject`
 - Scope is required and must be kebab-case
 - Subject must use present-tense imperative wording, state what changed, avoid vague phrasing, and end without a period
@@ -63,18 +74,20 @@ Commit all repo changes, write a proper Conventional Commit message, and push sa
 - For breaking changes, use `type(scope)!: subject` or add a `BREAKING CHANGE:` footer
 - Never include signature lines such as `Generated with ...` or `Co-Authored-By: Claude ...`
 
-5) **Commit**
-- Draft the message yourself from the diff, not from filenames alone
-- Use one focused commit per repository for the current batch of changes
-- If the commit includes newly added ignore rules for local-only junk, mention that cleanup intent in the body when it materially affects what was staged
-- If commit fails due to large files or policy limits, stop and ask the user for instructions before proceeding
+5) **Commit — one per conversation round**
+- Draft each message yourself from the diffs of that round, not from filenames alone
+- Create one focused commit per conversation round (not one commit per repository for the entire batch)
+- If multiple rounds touched the same repository, that repository will receive multiple commits, one per round
+- Commit rounds in chronological order (earliest round first)
+- If a commit fails due to large files or policy limits, stop and ask the user for instructions before proceeding
 
-6) **Handle pre-commit changes**
-- If pre-commit hooks modify files, stage the modified files and create a replacement commit that includes those changes
+6) **Handle pre-commit changes per round**
+- If pre-commit hooks modify files during a round's commit, stage the modified files and create a replacement commit for that round that includes those changes
 - Reuse the same commit intent while updating the body if the hook materially changed behavior
+- Process each round independently; a hook failure in one round does not block commits for other rounds
 
-7) **Auto push after successful commit**
-- Automatically push to the tracked remote branch after a successful commit
+7) **Auto push after all round commits succeed**
+- After all per-round commits have succeeded, push once to the tracked remote branch
 - If no upstream is configured, push with `-u origin <current-branch>`
 - If the remote branch is ahead of local, prefer `git pull --rebase` before retrying push
 - If push fails, treat it as an exceptional condition and ask the user for instructions

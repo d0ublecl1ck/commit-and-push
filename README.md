@@ -6,11 +6,12 @@ A reusable skill for committing and pushing repo changes with one canonical set 
 
 - Runs pre-checks in parallel: `git status`, `git diff`, `git log --oneline -5`
 - Detects sync-only states and handles them with `git pull --rebase` plus `git push`
-- Always stages all changes, including untracked files, with `git add -A`
+- Groups changes by conversation round — each distinct user request gets its own commit instead of one giant commit
+- Stages only the files belonging to each round, not blindly `git add -A` everything
 - Drafts Conventional Commit messages with required `type(scope): subject`
 - Uses HEREDOC commit messages and adds bodies for non-trivial changes
-- Re-commits when pre-commit hooks modify files
-- Pushes automatically after a successful commit
+- Re-commits per round when pre-commit hooks modify files
+- Pushes once after all round commits succeed
 - Supports optional PR creation with `gh` when explicitly requested
 
 ## When to use

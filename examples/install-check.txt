@@ -1,0 +1,15 @@
+Public install check executed on 2026-07-13:
+
+Command:
+  npx --yes skills add d0ublecl1ck/commit-and-push --help
+
+Observed from the current public main branch:
+  Repository cloned
+  Found 1 skill
+  Skill: cap
+  73 agents detected
+
+Interpretation:
+  The public repository is installable, but it still exposes the previous
+  `cap` frontmatter until the refined local changes are explicitly committed
+  and pushed. Publishing is intentionally outside this refinement run.

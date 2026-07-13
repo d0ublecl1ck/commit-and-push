@@ -1,223 +1,195 @@
 ---
-name: cap
-description: Strict workflow and safety constraints for committing all intended repo changes without confirmation, auto-recording ignore rules for local-only junk files, drafting Conventional Commit messages with required type and scope, HEREDOC bodies, hook handling, sync-only detection, and optional PR creation via gh when explicitly requested. This skill is opt-in only and must never be invoked proactively; use it only when the user explicitly asks to use cap or explicitly requests commit and push execution.
+name: commit-and-push
+description: Safely group intended repository changes into auditable Conventional Commits and push them. Use only when the user explicitly asks to use `commit-and-push` or `cap`, or explicitly instructs the agent to commit and push. Covers dirty worktrees, multiple repositories, first commits, sync-only branches, hooks, ignore rules, secrets, upstream setup, and optional PR creation. Do not use for code changes, review, debugging, planning, vague shipping intent, commit-message drafting alone, or commit-only requests.
 ---
 
-# cap
+# commit-and-push
 
-Commit all repo changes, write a proper Conventional Commit message, and push safely.
+Turn the current conversation's intended changes into focused Conventional Commits, then push them safely.
 
 ## Activation Boundary (hard rule)
 
-- This skill is opt-in only
-- Never invoke this skill proactively, implicitly, by default, or because it seems helpful
-- Use this skill only when the user explicitly requests `cap` or explicitly instructs the agent to commit and push changes
-- If the user asks only for code changes, review, debugging, planning, or implementation, do not use this skill
-- Do not reinterpret vague shipping intent as permission to use this skill; require an explicit user request for commit and push execution
+- This skill is opt-in only.
+- Never invoke this skill proactively, implicitly, by default, or because it seems helpful.
+- Use it only when the user explicitly asks to use `commit-and-push` or `cap`, or explicitly instructs the agent to commit and push.
+- A request to draft a commit message, commit without push, ship vaguely, review, debug, plan, or implement does not activate this skill.
+- A confirmation question such as “ready?” or “is everything done?” is not execution permission.
 
-## Workflow (order is mandatory)
+## Safety Invariants
 
-0) **No questions unless exceptional**
-- Do not ask the user any questions
-- Proceed autonomously unless an error or exceptional condition occurs
+- Never change Git configuration outside disposable verification fixtures.
+- Never use destructive commands such as `git reset --hard`, `git clean -fd`, or force push unless the user explicitly authorizes that exact action.
+- Never use interactive Git commands such as `git rebase -i`.
+- Never commit `.env`, credentials, private keys, tokens, cookies, `node_modules/`, `.venv/`, `__pycache__/`, or large binaries without explicit approval.
+- Never overwrite, revert, or discard changes that were not produced by the current task.
+- Never create an empty commit unless explicitly requested.
+- Create a PR only when explicitly requested.
 
-0.5) **Detect single-repo vs multi-repo workspace**
-- Before any git action, determine whether the current workspace is a single Git repository or a workspace containing multiple independent Git repositories
-- If the current workspace matches this multi-repo layout, do not run one combined root-level git workflow:
-  - `openspec`: `/Users/d0ublecl1ck/evaluation/openspec`
-  - `evaluation_admin`: `/Users/d0ublecl1ck/evaluation/evaluation_admin`
-  - `evaluation_server`: `/Users/d0ublecl1ck/evaluation/evaluation_server`
-- In that multi-repo layout, run the full cap workflow separately for each repository
-- Treat each repository as an independent unit for pre-checks, staging, commit, hook handling, pull/rebase, push, and failure handling
-- Summarize status and outcome per repository
+## Mandatory Workflow
 
-1) **Pre-commit checks (must run in parallel)**
-- Run in parallel: `git status`, `git diff`, `git log --oneline -5`
-- Summarize results before proceeding
-- If `git status --short --branch` shows both `ahead` and `behind` (e.g., `master...origin/master [ahead 1, behind 1]`), `git diff` is empty, `git log --oneline -5` is non-empty (not first commit), and `git status` reports `nothing to commit, working tree clean`, treat this as a sync-only state
-- In sync-only state, run `git pull --rebase` first, then `git push`; do not create a new commit
+### 1. Discover repository boundaries
 
-2) **First commit special rule**
-- If `git log --oneline -5` is empty or reports no commits (e.g., `fatal: your current branch ... does not have any commits yet`), treat this as the first commit
-- For the first commit, do not ask the user for requirements; inspect current changes and project context and create the initial commit
+Before any staging or commit:
 
-3) **Group changes by conversation round — batch commits, not one giant commit**
-- Before staging, review the conversation history and identify distinct user requests or rounds that produced changes
-- Each distinct conversation round that resulted in file changes is a separate commit unit
-- Map each changed file to the conversation round that caused the change:
-  - If a file was touched by multiple rounds, assign it to the most recent round that modified it
-  - If the mapping is ambiguous and cannot be resolved from the conversation, fall back to grouping by coherent change intent inferred from the diffs themselves
-- Treat each round as an independent commit with its own staging, message, and commit
-- For each round, stage only the files belonging to that round (do not use `git add -A` blindly across all rounds)
-- When a round's changes include newly added ignore rules for local-only junk, commit those ignore rules together with that round's changes
-- If the conversation shows only a single coherent round of changes, a single commit is fine — the point is to avoid smashing unrelated changes together
+1. Determine whether the current workspace is one repository, a worktree, or a directory containing multiple independent repositories.
+2. Discover repositories from Git metadata; do not rely on machine-specific absolute paths or hard-coded project names.
+3. Treat each repository independently for status checks, staging, hooks, synchronization, commits, and push outcomes.
+4. If repository ownership is ambiguous, stop and ask which repositories are in scope.
 
-3.1) **Per-round staging rules**
-- For each round, stage all files that belong to that round, including untracked files created during that round
-- Before each round's staging pass, inspect untracked files and local junk files that should not be versioned, such as `__pycache__/`, `*.pyc`, `.DS_Store`, editor swap files, temporary logs, coverage output, local virtual environments, or build caches
-- If such local-only files are present and are not already ignored, add the narrowest appropriate ignore pattern to the repository ignore file before staging
-- Prefer updating an existing repo-local ignore file such as `.gitignore`; use `.git/info/exclude` only when the ignore rule is intentionally machine-local and should not be committed
-- After adding the ignore rule, remove those files from the index if needed, keep them untracked locally, and commit the ignore-rule change as part of the same round's commit
-- Do not auto-ignore source files, project assets, fixtures, migrations, lockfiles, or any file whose ownership is ambiguous; when in doubt, stop and ask the user
-- Do not create empty commits
-- Never commit `.env`, credentials, secrets, `node_modules/`, `__pycache__/`, `.venv/`, or large binary files without explicit approval
+### 2. Run preflight checks in parallel
 
-4) **Draft one commit message per round before committing**
-- Draft a separate message for each conversation round identified in step 3
-- Use Conventional Commits format: `type(scope): subject`
-- Scope is required and must be kebab-case
-- Subject must use present-tense imperative wording, state what changed, avoid vague phrasing, and end without a period
-- Keep the subject concise and preferably within 50 characters after the colon
-- Use a HEREDOC for every commit message, including simple commits
-- Add a body for non-trivial changes to explain how and why
-- Use git trailers when they materially help, such as `Fixes #N`, `Closes #N`, or `Co-authored-by: Name <email>`
-- For breaking changes, use `type(scope)!: subject` or add a `BREAKING CHANGE:` footer
-- Never include signature lines such as `Generated with ...` or `Co-Authored-By: Claude ...`
+For every repository, run these read-only checks in parallel:
 
-5) **Commit — one per conversation round**
-- Draft each message yourself from the diffs of that round, not from filenames alone
-- Create one focused commit per conversation round (not one commit per repository for the entire batch)
-- If multiple rounds touched the same repository, that repository will receive multiple commits, one per round
-- Commit rounds in chronological order (earliest round first)
-- If a commit fails due to large files or policy limits, stop and ask the user for instructions before proceeding
+```bash
+git status --short --branch
+git diff --stat && git diff
+git diff --cached --stat && git diff --cached
+git log --oneline -5
+git remote -v
+git branch --show-current
+git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}'
+```
 
-6) **Handle pre-commit changes per round**
-- If pre-commit hooks modify files during a round's commit, stage the modified files and create a replacement commit for that round that includes those changes
-- Reuse the same commit intent while updating the body if the hook materially changed behavior
-- Process each round independently; a hook failure in one round does not block commits for other rounds
+The upstream query may fail when no upstream exists; record that state instead of treating it as a fatal error.
 
-7) **Auto push after all round commits succeed**
-- After all per-round commits have succeeded, push once to the tracked remote branch
-- If no upstream is configured, push with `-u origin <current-branch>`
-- If the remote branch is ahead of local, prefer `git pull --rebase` before retrying push
-- If push fails, treat it as an exceptional condition and ask the user for instructions
+Summarize before changing the index:
 
-## Commit message conventions
+- repository and branch;
+- tracked, staged, and untracked changes;
+- upstream and ahead/behind state;
+- likely conversation-round groups;
+- files blocked by safety rules.
 
-### Types
+### 3. Classify exceptional states
 
-| Type | Purpose |
-|------|---------|
-| `feat` | New feature or functionality |
-| `fix` | Bug fix or issue resolution |
-| `refactor` | Code refactoring without behavior change |
-| `perf` | Performance improvements |
-| `test` | Test additions or modifications |
-| `ci` | CI/CD configuration changes |
-| `docs` | Documentation updates |
-| `chore` | Maintenance, dependencies, tooling |
-| `style` | Code formatting or lint-only changes |
-| `security` | Security fixes or hardening |
+#### First commit
 
-### Scope
+If `git log --oneline -5` reports no commits, inspect all intended files and create the initial commit without asking routine questions.
 
-- Always include a scope in parentheses
-- Use concise kebab-case nouns such as `auth`, `api`, `config`, `tests`, `validation`, or `cookie-service`
+#### Sync-only
 
-### Subject
+Treat a repository as sync-only only when all are true:
 
-- Use imperative verbs such as `add`, `fix`, `refactor`, `remove`, `improve`, `prevent`, or `implement`
-- Describe the concrete change, not a generic intention
-- Do not use vague subjects like `update code`, `fix bug`, `make changes`, or `add stuff`
+- the worktree and index are clean;
+- upstream is ahead and local has no unpublished commits;
+- the repository already has commits.
 
-### Body
+Run `git fetch`, verify divergence with `git rev-list --left-right --count HEAD...@{upstream}`, then use `git pull --ff-only` and `git push`; do not create a new commit. If both sides have commits, classify the state as diverged rather than sync-only and ask before rebasing.
 
-- Leave one blank line after the subject
-- Explain how the change works and why it was made
-- Use short bullet points when multiple details need to be grouped
-- Wrap lines reasonably, around 72 characters when practical
-- Add task, requirement, or review-comment references only when they add useful traceability
+#### No changes
 
-### Examples
+If there are no intended changes and the branch is already synchronized, report “nothing to commit or push” and stop without an empty commit.
 
-Good:
+#### Detached HEAD or unresolved conflicts
+
+Stop and report the exact state. Do not invent a branch, resolve conflicts, or push from detached HEAD without user direction.
+
+### 4. Build a commit plan
+
+Review conversation history and map changed files to the user request or conversation round that caused them.
+
+- One distinct change-producing round is one commit unit.
+- If one file was modified across rounds, assign it to the latest round that modified it.
+- If conversation provenance is unavailable, group by coherent intent visible in the diff.
+- Keep unrelated changes separate even when they live in the same repository.
+- Do not use `git add -A` across all groups.
+
+Before staging, present a concise plan:
 
 ```text
-feat(validation): add URLValidator with domain whitelist
-fix(auth): use hmac.compare_digest for key comparison
-refactor(template): consolidate filename sanitization
-test(security): add path traversal prevention tests
+Commit 1 — feat(validation): add URL validation
+  src/validation.ts
+  tests/validation.test.ts
+
+Commit 2 — docs(readme): document validation behavior
+  README.md
+
+Blocked
+  .env — secret-like file; never stage without explicit approval
 ```
 
-Bad:
+Proceed autonomously after the plan unless an exceptional condition or ambiguous file ownership requires a question.
 
-```text
-update validation code
-feat: add stuff
-fix(auth): fix bug
-chore: make changes
-feat(security): improve things.
-```
+### 5. Guard secrets and local junk
 
-## Commit message templates
+Inspect untracked and staged files before every commit unit.
 
-### Simple commit
+Local-only junk includes `.DS_Store`, `*.pyc`, `__pycache__/`, editor swaps, temporary logs, coverage output, build caches, and local virtual environments.
+
+- Add the narrowest appropriate pattern to a repository `.gitignore` when the rule should be shared.
+- Use `.git/info/exclude` only for deliberately machine-local exclusions.
+- If a junk file is already tracked, show the exact path, add its ignore rule, then use `git rm --cached -- <path>` and verify the local file still exists before committing. Never use plain `git rm` for this case.
+- Commit shared ignore-rule changes with the conversation round that exposed the junk.
+- Never auto-ignore source, assets, fixtures, migrations, lockfiles, or ownership-ambiguous files.
+
+Secret-like files are blocked, not merely ignored. Stop and ask if the user explicitly wants one committed.
+
+### 6. Stage and commit each unit
+
+For each commit unit, in chronological order:
+
+1. Stage only that unit's intended paths.
+2. Inspect `git diff --cached --stat` and `git diff --cached`.
+3. Confirm no blocked file or unrelated hunk is staged.
+4. Draft the message from the staged diff.
+5. Commit with a HEREDOC.
+
+Commit message contract:
+
+- Format: `type(scope): subject`.
+- Scope is required and kebab-case.
+- Subject is present-tense imperative, concrete, concise, and has no trailing period.
+- Add a body for non-trivial changes to explain how and why.
+- Use trailers only when they add traceability.
+- Use `!` or `BREAKING CHANGE:` for breaking changes.
+- Never add generated-by signatures or synthetic co-author lines.
 
 ```bash
 git commit -m "$(cat <<'EOF'
-fix(auth): use hmac.compare_digest for key comparison
+fix(auth): use constant-time key comparison
+
+Replace direct equality to avoid timing differences when checking API keys.
 EOF
 )"
 ```
 
-### Complex commit
+If a hook modifies files, inspect those edits, restage only files belonging to the same unit, and retry that unit. If a hook introduces unrelated or unsafe changes, stop and report them.
 
-```bash
-git commit -m "$(cat <<'EOF'
-feat(validation): add URLValidator with domain whitelist
+### 7. Synchronize and push
 
-Implement URLValidator class supporting:
-- Domain whitelist enforcement for supported domains
-- Dangerous scheme blocking for unsafe inputs
-- URL parsing with embedded credentials handling
+After all commit units in a repository succeed:
 
-Addresses Requirement 31: Input validation
-Part of Task 5.1: Input Validation Utilities
-EOF
-)"
-```
+1. Run `git fetch` and re-check the worktree, index, upstream, and exact divergence with `git rev-list --left-right --count HEAD...@{upstream}`.
+2. If the worktree or index contains unexpected changes, stop before synchronization.
+3. If upstream is ahead and local has no unpublished commits, run `git pull --ff-only`.
+4. If both sides have commits, do not rewrite local history automatically. Report the divergence and ask before any rebase.
+5. Push once to the tracked branch after synchronization is safe.
+6. If no upstream exists, use `git push -u origin <current-branch>`.
+7. Never force push implicitly.
 
-### Review-comment follow-up
+A push failure is exceptional: report the command, error, committed local SHAs, and unpushed branch; then ask what to do.
 
-```bash
-git commit -m "$(cat <<'EOF'
-fix(api): address review comment on retry handling
+### 8. Report outcomes
 
-Tighten retry classification so only transient failures retry.
-Addresses review comment #123456789.
-EOF
-)"
-```
+Summarize per repository:
 
-## Branching and PRs (only if user explicitly requests a PR)
+- commit SHA and subject for each unit;
+- pushed branch and remote;
+- skipped, blocked, or uncommitted files;
+- hook, rebase, or push exceptions.
 
-- Before creating a PR, check current branch status and diffs
-- PR description must include `Summary` and `Test plan`
-- Create PRs with `gh` only; do not change git config
-- Reuse commit bodies as source material for the PR description when helpful
+## Optional Pull Request
 
-Example:
+Only when the user explicitly requests a PR:
 
-```bash
-gh pr create --title "feat(security): implement input validation" --body "$(cat <<'EOF'
-## Summary
-- Add input validation utilities and security hardening
-- Prevent path traversal in template processing
-- Improve API key authentication handling
-
-## Test plan
-- Run project test suite
-- Verify security regression coverage
-EOF
-)"
-```
-
-## Safety constraints (hard rules)
-
-- Never update any git config
-- Never run interactive git commands such as `rebase -i`
-- Never create empty commits unless the user explicitly requests one
+1. Verify GitHub CLI authentication and current branch state.
+2. Reuse an existing open PR for the branch when appropriate.
+3. Otherwise create one with `gh pr create`.
+4. Include `## Summary` and `## Test plan`.
+5. Do not merge, tag, release, or deploy without separate explicit authorization.
 
 ## References
 
-- `references/commit_examples.md` for extended examples by type
+- `references/commit_examples.md` — extended Conventional Commit examples.
+- `examples/commit-plan.md` — a visible before/after commit plan.
+- `scripts/verify_skill.py` — deterministic offline fixture verification.

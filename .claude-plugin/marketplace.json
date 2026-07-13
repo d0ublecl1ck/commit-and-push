@@ -1,0 +1,13 @@
+{
+  "name": "commit-and-push",
+  "owner": {
+    "name": "d0ublecl1ck"
+  },
+  "plugins": [
+    {
+      "name": "commit-and-push",
+      "description": "Safely group intended changes into auditable Conventional Commits and push them.",
+      "source": "./"
+    }
+  ]
+}

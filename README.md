@@ -9,7 +9,7 @@
 [![Verify](https://github.com/d0ublecl1ck/commit-and-push/actions/workflows/verify.yml/badge.svg)](https://github.com/d0ublecl1ck/commit-and-push/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**把一轮 Agent 工作拆成可审计的 Conventional Commits，并在推送前挡住秘密、垃圾文件和同步风险。**
+**把工作区全部改动拆成可审计的 Conventional Commits，并在推送前挡住秘密、垃圾文件和同步风险。**
 
 [看效果](#效果示例) · [安装](#快速开始) · [触发方式](#触发方式) · [安全边界](#安全边界) · [验证](#验证与测试)
 
@@ -71,7 +71,7 @@ cap
 或：
 
 ```text
-提交并推送当前仓库的全部预期改动，不要包含无关文件。
+提交并推送当前仓库工作区的全部改动，按意图拆分成多个提交。
 ```
 
 > 只有明确要求 `commit and push`、`提交并推送` 或 `cap` 才会触发。仅说“写个 commit message”“提交一下”或“可以了吗”不会触发推送。
@@ -103,7 +103,7 @@ cap
 | 阶段 | 可见产物 |
 |---|---|
 | 预检 | 仓库、分支、upstream、ahead/behind、脏文件摘要 |
-| 规划 | 按对话轮次或变更意图拆分的 commit plan |
+| 规划 | 覆盖工作区全部改动、按变更意图拆分的 commit plan |
 | 安全检查 | blocked secrets、ignored junk、歧义文件列表 |
 | 提交 | 每个原子提交的 SHA 与 Conventional Commit subject |
 | 推送 | 每个仓库的 remote、branch 和 push 结果 |
@@ -116,7 +116,7 @@ cap
 | 维度 | 常见 AI commit 工具 | commit-and-push |
 |---|---|---|
 | 主要目标 | 生成一条提交信息 | 编排完整、安全、可审计的提交与推送 |
-| 变更分组 | 通常把 staged diff 当成一组 | 优先按对话轮次，其次按 diff 意图分组 |
+| 变更分组 | 通常把 staged diff 当成一组 | 覆盖工作区全部改动，按 diff 意图分组 |
 | 授权 | 常由模糊提交意图触发 | 严格 opt-in，必须明确要求 commit + push |
 | 脏工作区 | 依赖用户先整理 | 主动识别秘密、垃圾和无关修改 |
 | 多仓库 | 通常只看当前仓库 | 每个仓库独立预检、提交、同步和汇报 |

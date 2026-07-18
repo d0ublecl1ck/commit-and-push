@@ -1,11 +1,11 @@
 ---
 name: commit-and-push
-description: Safely group intended repository changes into auditable Conventional Commits and push them. Use only when the user explicitly asks to use `commit-and-push` or `cap`, or explicitly instructs the agent to commit and push. Covers dirty worktrees, multiple repositories, first commits, sync-only branches, hooks, ignore rules, secrets, upstream setup, and optional PR creation. Do not use for code changes, review, debugging, planning, vague shipping intent, commit-message drafting alone, or commit-only requests.
+description: Safely group all worktree changes into auditable Conventional Commits and push them. Use only when the user explicitly asks to use `commit-and-push` or `cap`, or explicitly instructs the agent to commit and push. Covers dirty worktrees, multiple repositories, first commits, sync-only branches, hooks, ignore rules, secrets, upstream setup, and optional PR creation. Do not use for code changes, review, debugging, planning, vague shipping intent, commit-message drafting alone, or commit-only requests.
 ---
 
 # commit-and-push
 
-Turn the current conversation's intended changes into focused Conventional Commits, then push them safely.
+Turn all worktree changes — including changes that did not come from the current conversation — into focused Conventional Commits, then push them safely.
 
 ## Activation Boundary (hard rule)
 
@@ -57,7 +57,7 @@ Summarize before changing the index:
 - repository and branch;
 - tracked, staged, and untracked changes;
 - upstream and ahead/behind state;
-- likely conversation-round groups;
+- likely commit groups;
 - files blocked by safety rules.
 
 ### 3. Classify exceptional states
@@ -78,7 +78,7 @@ Run `git fetch`, verify divergence with `git rev-list --left-right --count HEAD.
 
 #### No changes
 
-If there are no intended changes and the branch is already synchronized, report “nothing to commit or push” and stop without an empty commit.
+If there are no pending changes and the branch is already synchronized, report “nothing to commit or push” and stop without an empty commit.
 
 #### Detached HEAD or unresolved conflicts
 
@@ -86,11 +86,10 @@ Stop and report the exact state. Do not invent a branch, resolve conflicts, or p
 
 ### 4. Build a commit plan
 
-Review conversation history and map changed files to the user request or conversation round that caused them.
+Include every pending change in the worktree — tracked modifications, staged changes, and untracked files — regardless of whether it came from the current conversation. Never exclude a change just because it looks unrelated to the conversation; assign it to a commit unit by coherent intent visible in the diff, or to its own unit when no intent matches.
 
-- One distinct change-producing round is one commit unit.
-- If one file was modified across rounds, assign it to the latest round that modified it.
-- If conversation provenance is unavailable, group by coherent intent visible in the diff.
+- Group by coherent intent visible in the diff; one coherent intent is one commit unit.
+- Use conversation history only as a grouping hint, never as a filter that excludes files.
 - Keep unrelated changes separate even when they live in the same repository.
 - Do not use `git add -A` across all groups.
 
@@ -119,7 +118,7 @@ Local-only junk includes `.DS_Store`, `*.pyc`, `__pycache__/`, editor swaps, tem
 - Add the narrowest appropriate pattern to a repository `.gitignore` when the rule should be shared.
 - Use `.git/info/exclude` only for deliberately machine-local exclusions.
 - If a junk file is already tracked, show the exact path, add its ignore rule, then use `git rm --cached -- <path>` and verify the local file still exists before committing. Never use plain `git rm` for this case.
-- Commit shared ignore-rule changes with the conversation round that exposed the junk.
+- Commit shared ignore-rule changes with the commit unit that exposed the junk.
 - Never auto-ignore source, assets, fixtures, migrations, lockfiles, or ownership-ambiguous files.
 
 Secret-like files are blocked, not merely ignored. Stop and ask if the user explicitly wants one committed.

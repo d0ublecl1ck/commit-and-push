@@ -15,6 +15,22 @@ Turn all worktree changes — including changes that did not come from the curre
 - A request to draft a commit message, commit without push, ship vaguely, review, debug, plan, or implement does not activate this skill.
 - A confirmation question such as “ready?” or “is everything done?” is not execution permission.
 
+## Mandatory Precondition (neat-freak first)
+
+`commit-and-push` packages a closeout; it does not replace one. Before staging
+anything, the `neat-freak-enhance` closeout for the affected project(s) MUST
+already be complete:
+
+- its `.freak` clue file was read at the start and written back at the end;
+- the project rule file (`AGENTS.md`/`CLAUDE.md`) and docs agree with the code;
+- `.freak`, and any rule or doc changes the closeout produced, are part of the
+  pending worktree changes committed by this workflow.
+
+If `neat-freak-enhance` has not run, stop and run it first, then resume here.
+The only exception is a repository with no closeout surface to reconcile (for
+example, pure vendored data with no project code, docs, or rule files); record
+that fact and proceed.
+
 ## Safety Invariants
 
 - Never change Git configuration outside disposable verification fixtures.
@@ -26,6 +42,13 @@ Turn all worktree changes — including changes that did not come from the curre
 - Create a PR only when explicitly requested.
 
 ## Mandatory Workflow
+
+### 0. Complete the neat-freak closeout first
+
+Run `neat-freak-enhance` for every repository in scope before touching the
+index (see "Mandatory Precondition" above). Its `.freak` file must be written
+back and included in this workflow's commit. If a repository has no closeout
+surface, record that and continue.
 
 ### 1. Discover repository boundaries
 
@@ -174,6 +197,8 @@ Summarize per repository:
 
 - commit SHA and subject for each unit;
 - pushed branch and remote;
+- closeout status: that `neat-freak-enhance` ran, and the `.freak` clues
+  added, updated, or removed;
 - skipped, blocked, or uncommitted files;
 - hook, rebase, or push exceptions.
 

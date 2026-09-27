@@ -5,11 +5,11 @@
 > *「别把一轮工作压成一个说不清的大提交。」*
 
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-blueviolet)](SKILL.md)
-[![skills.sh](https://skills.sh/b/d0ublecl1ck/commit-and-push)](https://skills.sh/d0ublecl1ck/commit-and-push)
+[![skills.sh](https://img.shields.io/badge/skills.sh-d0ublecl1ck%2Fcommit-and-push)](https://skills.sh/d0ublecl1ck/commit-and-push)
 [![Verify](https://github.com/d0ublecl1ck/commit-and-push/actions/workflows/verify.yml/badge.svg)](https://github.com/d0ublecl1ck/commit-and-push/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**把工作区全部改动拆成可审计的 Conventional Commits，并在推送前挡住秘密、垃圾文件和同步风险。**
+**把本会话的改动拆成可审计的 Conventional Commits——先显示提交计划、由你选择提交范围，再安全推送。**
 
 [看效果](#效果示例) · [安装](#快速开始) · [触发方式](#触发方式) · [安全边界](#安全边界) · [验证](#验证与测试)
 
@@ -21,7 +21,7 @@
 
 你让 Agent 改了功能、测试和文档，最后一句“提交并推送”看似简单，实际可能发生：所有变化被塞进一个提交、别人的改动被顺手带上、`.env` 被误提交，或远端领先时直接 push 失败。
 
-`commit-and-push` 不只是生成 commit message。它先识别仓库边界和变更来源，再给出提交计划，逐组检查 staged diff，最后安全同步和推送。
+`commit-and-push` 不只是生成 commit message。它先识别仓库边界，再为每条待提交路径标注来源（本会话 / 其它来源），给出提交计划并让你选择范围，默认只提交本会话自己改的内容，逐组检查 staged diff，最后安全同步和推送。
 
 它不需要 API Key，也不调用外部模型；由当前 Agent 使用本地 Git 完成工作。
 
@@ -35,15 +35,18 @@
 cap
 ```
 
-面对同时包含功能、测试、文档、日志和 `.env` 的脏工作区，它应先给出：
+面对同时包含功能、测试、文档、其它会话改动、日志和 `.env` 的脏工作区，它应先给出：
 
 ```text
-Commit 1 — feat(validation): add URL validation
+Commit 1 — feat(validation): add URL validation            [current session]
   src/validation.ts
   tests/validation.test.ts
 
-Commit 2 — docs(readme): document validation behavior
+Commit 2 — docs(readme): document validation behavior      [current session]
   README.md
+
+Not selected (other / unknown)
+  src/unrelated.ts — other session; excluded unless you select it
 
 Ignored
   debug.log — local runtime artifact
@@ -52,7 +55,7 @@ Blocked
   .env — secret-like file; explicit approval required
 ```
 
-随后仅提交计划内文件，并报告每个 SHA 与 push 结果。完整样例见 [`examples/commit-plan.md`](examples/commit-plan.md)。
+随后只提交你选中的文件（默认只提交本会话改动），并报告每个 SHA 与 push 结果。完整样例见 [`examples/commit-plan.md`](examples/commit-plan.md)。
 
 ---
 
@@ -71,10 +74,10 @@ cap
 或：
 
 ```text
-提交并推送当前仓库工作区的全部改动，按意图拆分成多个提交。
+提交并推送本会话的改动，先给我看提交计划和我选择提交范围。
 ```
 
-> 只有明确要求 `commit and push`、`提交并推送` 或 `cap` 才会触发。仅说“写个 commit message”“提交一下”或“可以了吗”不会触发推送。
+> 只有明确要求 `commit and push`、`提交并推送` 或 `cap` 才会触发。仅说“写个 commit message”“提交一下”或“可以了吗”不会触发推送。默认只提交本会话改动，其它来源需你显式选择。
 
 ---
 
@@ -102,8 +105,9 @@ cap
 
 | 阶段 | 可见产物 |
 |---|---|
-| 预检 | 仓库、分支、upstream、ahead/behind、脏文件摘要 |
-| 规划 | 覆盖工作区全部改动、按变更意图拆分的 commit plan |
+| 预检 | 仓库、分支、upstream、ahead/behind、脏文件摘要与来源标注 |
+| 规划 | 显示全部待提交路径与来源，默认只选本会话改动，按意图拆分的 commit plan |
+| 选择 | 发现其它来源改动时暂停，由你确认提交范围（默认只提交本会话） |
 | 安全检查 | blocked secrets、ignored junk、歧义文件列表 |
 | 提交 | 每个原子提交的 SHA 与 Conventional Commit subject |
 | 推送 | 每个仓库的 remote、branch 和 push 结果 |
@@ -116,7 +120,8 @@ cap
 | 维度 | 常见 AI commit 工具 | commit-and-push |
 |---|---|---|
 | 主要目标 | 生成一条提交信息 | 编排完整、安全、可审计的提交与推送 |
-| 变更分组 | 通常把 staged diff 当成一组 | 覆盖工作区全部改动，按 diff 意图分组 |
+| 变更分组 | 通常把 staged diff 当成一组 | 默认只提交本会话改动，按 diff 意图分组 |
+| 提交范围 | 隐式包含工作区全部改动 | 显示计划，由用户显式选择；其它来源默认排除 |
 | 授权 | 常由模糊提交意图触发 | 严格 opt-in，必须明确要求 commit + push |
 | 脏工作区 | 依赖用户先整理 | 主动识别秘密、垃圾和无关修改 |
 | 多仓库 | 通常只看当前仓库 | 每个仓库独立预检、提交、同步和汇报 |
@@ -133,6 +138,8 @@ cap
 - 主动触发或把模糊的“ship it”解释为 commit + push 授权；
 - 修改全局或仓库 Git 配置；
 - 默认使用 `git reset --hard`、`git clean -fd`、交互式 rebase 或 force push；
+- 用 `git add -A`、`git add .`、`git add -u` 或目录参数批量暂存；
+- 把其它会话、其它 Agent 或更早无关工作的改动顺手提交（除非你显式选择）；
 - 自动提交 `.env`、凭据、私钥、token、cookie、虚拟环境或大二进制；
 - 丢弃、覆盖或回滚不属于当前任务的修改；
 - 自动解决冲突、创建 PR、merge、tag、release 或部署。
@@ -174,7 +181,8 @@ python3 -m unittest discover -s tests -v
 - first commit 检测；
 - 嵌套、已暂存、常见凭据名及内容型 secret 启发式检测；
 - clean worktree 的精确 ahead/behind 计算；
-- tracked junk 使用 `git rm --cached` 后仍保留本地文件。
+- tracked junk 使用 `git rm --cached` 后仍保留本地文件；
+- SKILL.md 的会话范围选择与显式路径暂存契约。
 
 Secret 检测是阻断明显风险的启发式门禁，不替代专用 secret scanner。验证器检查规则依赖的确定性 Git 状态和安全检测，不模拟 Agent 的自然语言分组质量，也不声称覆盖真实 push、hook 或冲突处理。合格标准：所有结构检查和五个 fixture 均显示 `PASS`。
 

@@ -1,11 +1,13 @@
 ---
 name: commit-and-push
-description: Safely group all worktree changes into auditable Conventional Commits and push them. Use only when the user explicitly asks to use `commit-and-push` or `cap`, or explicitly instructs the agent to commit and push. Covers dirty worktrees, multiple repositories, first commits, sync-only branches, hooks, ignore rules, secrets, upstream setup, and optional PR creation. Do not use for code changes, review, debugging, planning, vague shipping intent, commit-message drafting alone, or commit-only requests.
+description: Safely group the current session's changes into auditable Conventional Commits, show the plan for scope selection, then push them. Use only when the user explicitly asks to use `commit-and-push` or `cap`, or explicitly instructs the agent to commit and push. Covers dirty worktrees, multiple repositories, first commits, sync-only branches, hooks, ignore rules, secrets, upstream setup, and optional PR creation. Do not use for code changes, review, debugging, planning, vague shipping intent, commit-message drafting alone, or commit-only requests.
 ---
 
 # commit-and-push
 
-Turn all worktree changes — including changes that did not come from the current conversation — into focused Conventional Commits, then push them safely.
+Show the plan for the current session's worktree changes, let the user select the
+scope, turn the selected changes into focused Conventional Commits, then push them
+safely.
 
 ## Activation Boundary (hard rule)
 
@@ -38,6 +40,8 @@ that fact and proceed.
 - Never use interactive Git commands such as `git rebase -i`.
 - Never commit `.env`, credentials, private keys, tokens, cookies, `node_modules/`, `.venv/`, `__pycache__/`, or large binaries without explicit approval.
 - Never overwrite, revert, or discard changes that were not produced by the current task.
+- Never stage with `git add -A`, `git add .`, `git add -u`, or a directory argument. Stage explicit paths only: `git add -- <path> [<path> ...]`.
+- Never include a change from another session, another agent, or earlier unrelated work unless the user explicitly selects it during step 4.
 - Never create an empty commit unless explicitly requested.
 - Create a PR only when explicitly requested.
 
@@ -79,8 +83,9 @@ Summarize before changing the index:
 
 - repository and branch;
 - tracked, staged, and untracked changes;
+- provenance of each change: current session vs other/unknown;
 - upstream and ahead/behind state;
-- likely commit groups;
+- likely commit groups within the current session's changes;
 - files blocked by safety rules.
 
 ### 3. Classify exceptional states
@@ -107,30 +112,53 @@ If there are no pending changes and the branch is already synchronized, report �
 
 Stop and report the exact state. Do not invent a branch, resolve conflicts, or push from detached HEAD without user direction.
 
-### 4. Build a commit plan
+### 4. Build the commit plan and select its scope
 
-Include every pending change in the worktree — tracked modifications, staged changes, and untracked files — regardless of whether it came from the current conversation. Never exclude a change just because it looks unrelated to the conversation; assign it to a commit unit by coherent intent visible in the diff, or to its own unit when no intent matches.
+`commit-and-push` commits the work of the current session by default. A change
+being present in the worktree is not a reason to include it: changes from other
+sessions, other agents, or earlier unrelated work stay uncommitted unless the
+user explicitly selects them.
 
-- Group by coherent intent visible in the diff; one coherent intent is one commit unit.
-- Use conversation history only as a grouping hint, never as a filter that excludes files.
-- Keep unrelated changes separate even when they live in the same repository.
-- Do not use `git add -A` across all groups.
+#### Determine provenance
 
-Before staging, present a concise plan:
+Classify every pending path before writing the plan:
+
+- **current session** — paths this conversation created or edited, taken from the
+  session's own file-touch record (tool-call history or an explicit list kept
+  while working);
+- **other / unknown** — everything else, including changes that were already
+  staged before this skill ran.
+
+Do not infer provenance from file type, directory, or how related the diff looks.
+If provenance cannot be resolved with confidence, mark the path `unknown` and
+ask rather than guessing.
+
+#### Group and display
+
+- Group current-session changes into commit units by coherent intent visible in the diff; one coherent intent is one commit unit.
+- Keep unrelated changes in separate units even when they live in the same repository.
+- Display the full plan before touching the index, labeling every path with its provenance and every non-selected path as excluded:
 
 ```text
-Commit 1 — feat(validation): add URL validation
+Commit 1 — feat(validation): add URL validation            [current session]
   src/validation.ts
   tests/validation.test.ts
 
-Commit 2 — docs(readme): document validation behavior
+Commit 2 — docs(readme): document validation behavior      [current session]
   README.md
+
+Not selected (other / unknown)
+  src/unrelated.ts — other session; excluded unless you select it
 
 Blocked
   .env — secret-like file; never stage without explicit approval
 ```
 
-Proceed autonomously after the plan unless an exceptional condition or ambiguous file ownership requires a question.
+#### Ask for scope selection
+
+- If every pending change belongs to the current session, the selection is just those units; still show the plan, then continue.
+- If any other/unknown path exists, stop and ask the user to confirm the scope: which units to commit, and whether to include any other/unknown path. Default selection is the current-session units only.
+- Do not stage anything until the scope is confirmed. Record the confirmed selection and use it as the allow-list in step 6.
 
 ### 5. Guard secrets and local junk
 
@@ -148,13 +176,14 @@ Secret-like files are blocked, not merely ignored. Stop and ask if the user expl
 
 ### 6. Stage and commit each unit
 
-For each commit unit, in chronological order:
+For each selected commit unit, in chronological order:
 
-1. Stage only that unit's intended paths.
-2. Inspect `git diff --cached --stat` and `git diff --cached`.
-3. Confirm no blocked file or unrelated hunk is staged.
-4. Draft the message from the staged diff.
-5. Commit with a HEREDOC.
+1. Stage only that unit's confirmed paths, one explicit path at a time: `git add -- <path>`. Never `-A`, `.`, `-u`, or a directory.
+2. Confirm the staged set is a subset of the confirmed selection: `git diff --cached --name-only`.
+3. Inspect `git diff --cached --stat` and `git diff --cached`.
+4. Confirm no blocked file, non-selected path, or unrelated hunk is staged.
+5. Draft the message from the staged diff.
+6. Commit with a HEREDOC.
 
 Commit message contract:
 
@@ -196,6 +225,7 @@ A push failure is exceptional: report the command, error, committed local SHAs, 
 Summarize per repository:
 
 - commit SHA and subject for each unit;
+- scope decision: which units were selected, and which other/unknown paths were left uncommitted;
 - pushed branch and remote;
 - closeout status: that `neat-freak-enhance` ran, and the `.freak` clues
   added, updated, or removed;

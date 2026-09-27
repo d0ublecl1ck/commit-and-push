@@ -157,6 +157,17 @@ def verify_structure() -> list[dict[str, str]]:
         result("skill_name", bool(re.search(r"(?m)^name: commit-and-push$", skill)), "frontmatter name"),
         result("no_private_paths", not bool(re.search(r"/Users/[^/]+/|[A-Za-z]:\\\\Users\\\\", skill)), "SKILL.md path scan"),
         result("explicit_activation", "Never invoke this skill proactively" in skill, "activation boundary"),
+        result(
+            "session_scope_selection",
+            "commits the work of the current session by default" in skill,
+            "session-scoped commit scope",
+        ),
+        result("explicit_path_staging", "git add -- <path>" in skill, "explicit path staging"),
+        result(
+            "provenance_labels",
+            "Not selected (other / unknown)" in skill,
+            "other/unknown changes shown as excluded",
+        ),
         result("readme_install", "npx skills add d0ublecl1ck/commit-and-push" in readme, "install command"),
     ]
 

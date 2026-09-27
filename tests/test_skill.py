@@ -30,6 +30,13 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn("explicitly asks to use `commit-and-push` or `cap`", text)
         self.assertIn("Never invoke this skill proactively", text)
 
+    def test_skill_scopes_commits_to_current_session(self) -> None:
+        text = SKILL.read_text(encoding="utf-8")
+        self.assertIn("commits the work of the current session by default", text)
+        self.assertIn("git add -- <path>", text)
+        self.assertIn("Not selected (other / unknown)", text)
+        self.assertIn("git add -A", text)  # documented as forbidden, never used for staging
+
     def test_skill_contains_no_private_absolute_paths(self) -> None:
         text = SKILL.read_text(encoding="utf-8")
         self.assertNotRegex(text, r"/Users/[^/]+/")
